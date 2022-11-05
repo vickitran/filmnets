@@ -45,8 +45,13 @@ contract MyVideoNFT is
         _setTokenURI(tokenId, uri);
     }
 
-    function grantRole() public onlyRole(DEFAULT_ADMIN_ROLE) {
-        _grantRole(MINTER_ROLE, msg.sender);
+    function setupMinter(address minter, bool enabled)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        require(minter != address(0), "!minter");
+        if (enabled) _setupRole(MINTER_ROLE, minter);
+        else _revokeRole(MINTER_ROLE, minter);
     }
 
     function _beforeTokenTransfer(
