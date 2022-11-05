@@ -1,4 +1,4 @@
-import React from "react";
+import { useCallback, useState, useEffect } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 
 import EditScreenInfo from "../components/EditScreenInfo";
@@ -14,26 +14,36 @@ import "@ethersproject/shims";
 import { ethers } from "ethers";
 
 async function getBalance(address: string) {
-  const network = "goerli"; // use rinkeby testnet
+  const network = "goerli";
   const provider = ethers.getDefaultProvider(network);
   const balanceBN = await provider.getBalance(address);
   const balanceETH = ethers.utils.formatEther(balanceBN);
-  console.log(balanceBN);
   return balanceETH;
 }
 
-export default function TabOneScreen({
-  navigation,
-}: RootTabScreenProps<"TabOne">) {
+function TabOneScreen({ navigation }: RootTabScreenProps<"TabOne">) {
+  const [balance, setBalance] = useState("Loading...");
+
   const connector = useWalletConnect();
 
-  const connectWallet = React.useCallback(() => {
+  const connectWallet = useCallback(() => {
     return connector.connect();
   }, [connector]);
 
-  const killSession = React.useCallback(() => {
+  const killSession = useCallback(() => {
     return connector.killSession();
   }, [connector]);
+
+  useEffect(() => {
+    if (!!connector.connected) {
+      (async () => {
+        const walletbalance = await getBalance(connector.accounts[0]);
+        console.log(walletbalance);
+        setBalance(walletbalance);
+      })();
+    }
+    return () => {};
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -45,7 +55,7 @@ export default function TabOneScreen({
       {!!connector.connected && (
         <>
           <Text>{connector.accounts[0]}</Text>
-          {/* <Text>{`${getBalance(connector.accounts[0])}`}</Text> */}
+          <Text>{balance}</Text>
           <TouchableOpacity onPress={killSession} style={styles.buttonStyle}>
             <Text style={styles.buttonTextStyle}>Log out</Text>
           </TouchableOpacity>
@@ -91,3 +101,5 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
+
+export default TabOneScreen;

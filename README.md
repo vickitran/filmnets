@@ -13,7 +13,7 @@ https://docs.livepeer.studio/guides/mint-a-video-nft#minting-a-video-nft-using-l
 
 # Manual Video Minting (For TESTING)
 
-NOTE: (You will need to set up `MINTER_ROLE` access for the NFT contract [0xE710666F5C687e16CD8e71756C9E0833B05B1758](https://goerli.etherscan.io/address/0xE710666F5C687e16CD8e71756C9E0833B05B1758))
+NOTE: (You will need to set up `MINTER_ROLE` access for the NFT contract [0x28AB8de902D88D0C07CD492C6fa60D7752a140F3](https://goerli.etherscan.io/address/0x28AB8de902D88D0C07CD492C6fa60D7752a140F3))
 
 1. Getting video metadata via Livepeer command line tool
 
