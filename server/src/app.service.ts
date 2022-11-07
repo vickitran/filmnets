@@ -6,29 +6,27 @@ import { videonft } from '@livepeer/video-nft';
 import { ethers } from 'ethers';
 import * as ffmpeg from 'fluent-ffmpeg';
 import * as dotenv from 'dotenv';
+import * as childProcess from 'child_process';
 
 dotenv.config();
 
-const convertVideo = (videoPath) => {
+const convertVideoStream = (video, outputPath) => {
   return new Promise((resolve, _) => {
-    const convertedFilePath = nodePath.resolve(__dirname, '../converted.mp4');
     console.log(`start to convert video file`);
-    fs.createWriteStream(convertedFilePath);
-    fs.createWriteStream(nodePath.resolve(__dirname, '../converted.divx'));
     ffmpeg.setFfmpegPath(path);
-    ffmpeg(videoPath)
+    ffmpeg(video)
       .toFormat('mp4')
-      .on('start', (commandLine) => {
-        console.log('Spawned Ffmpeg with command: ' + commandLine);
+      .on('start', (_) => {
+        console.log('Spawned Ffmpeg with command:');
       })
       .on('error', (err) => {
         console.log('An error occurred: ' + err.message);
       })
       .on('end', () => {
         console.log(`Processing finished !`);
-        resolve(convertedFilePath);
+        resolve('done');
       })
-      .save(convertedFilePath);
+      .save(outputPath);
   });
 };
 
@@ -37,14 +35,13 @@ export class AppService {
   getHello(): string {
     return 'Hello World!';
   }
-  async createAsset(videoPath: string, assetName: string): Promise<string> {
+  async createAsset(video64BasedContent: string): Promise<string> {
+    console.log(`process mint`);
     // overwrite default videoNft mint function api
     const videoNftAbi = [
       'event safeMint(address indexed sender, address indexed owner, string tokenURI, uint256 tokenId)',
       'function safeMint(address owner, string tokenURI) returns (uint256)',
     ];
-
-    console.log(`live key: ${process.env.LIVEPEER_API_KEY}`);
     const apiOpts = {
       auth: { apiKey: process.env.LIVEPEER_API_KEY },
       endpoint: videonft.api.prodApiEndpoint,
@@ -58,17 +55,28 @@ export class AppService {
     const signer = wallet.connect(provider);
 
     const nftAPI = new videonft.minter.Api(apiOpts);
-    const convertedFilePath = await convertVideo(videoPath);
-    console.log(`start to create asset`);
-    // sleep 5 secondes before read converted file
-    await new Promise((resolve) => setTimeout(resolve, 15000));
+    // TODO: get file type from body
+    const orgFilePath = nodePath.resolve(__dirname, '../convertedTest.mov');
+    const convertedFilePath = nodePath.resolve(
+      __dirname,
+      '../convertedTest.mp4',
+    );
+
+    console.log(`start to convert video`);
+
+    fs.writeFileSync(orgFilePath as string, video64BasedContent, 'base64');
+    await convertVideoStream(orgFilePath, convertedFilePath);
 
     const fileContent = fs.createReadStream(convertedFilePath as string);
 
+    console.log(`start to create asset`);
+
     // TODO: get asset name from FE
-    const asset = await nftAPI.createAsset(assetName, fileContent);
+    // TODO: 520 error of connection
+    const asset = await nftAPI.createAsset('new-test-2', fileContent);
+
     console.log(`export to IPFS`);
-    const { nftMetadataUrl } = await nftAPI.exportToIPFS(asset.id);
+    const { nftMetadataUrl } = await nftAPI.exportToIPFS(asset?.id);
     console.log(`export video to ipfs: ${nftMetadataUrl}`);
 
     // TODO: move contract address to a constant
@@ -80,5 +88,102 @@ export class AppService {
     await videoNft.safeMint(signer.address, nftMetadataUrl);
 
     return nftMetadataUrl;
+  }
+
+  async convertVideo(video64BasedContent: string): Promise<string> {
+    // get input file type
+    const orgFilePath = nodePath.resolve(__dirname, '../convertedTest.mov');
+    const convertedFilePath = nodePath.resolve(
+      __dirname,
+      '../convertedTest.mp4',
+    );
+
+    console.log(`start to convert video`);
+    fs.writeFileSync(orgFilePath as string, video64BasedContent, 'base64');
+    await convertVideoStream(orgFilePath, convertedFilePath);
+    fs.unlinkSync(orgFilePath);
+    return convertedFilePath;
+  }
+
+  async createAssetLivePeer(convertedFilePath: string): Promise<string> { 
+    const apiOpts = {
+      auth: { apiKey: process.env.LIVEPEER_API_KEY },
+      endpoint: videonft.api.prodApiEndpoint,
+    };
+    const nftAPI = new videonft.minter.Api(apiOpts);
+
+    const fileContent = fs.createReadStream(convertedFilePath as string);
+
+    console.log(`start to create asset`);
+
+    // TODO: get asset name from FE
+    // TODO: 520 error of connection
+    try {
+      const asset = await nftAPI.createAsset('new-test-2', fileContent);
+      console.log(`export to IPFS`);
+      const { nftMetadataUrl } = await nftAPI.exportToIPFS(asset?.id);
+      console.log(`export video to ipfs: ${nftMetadataUrl}`);
+      fs.unlinkSync(convertedFilePath);
+      return nftMetadataUrl;
+    } catch (err) {
+      const { message } = err;
+      if (message.includes('520 Server Error')) {
+        const hackWayGetAssetId = message.split('failed (520 Server Error)');
+        const stringWithAssetId = hackWayGetAssetId[0].split('/');
+        console.log('520 Server Error');
+        const taskId = stringWithAssetId[stringWithAssetId.length - 1].trim();
+        const curlCommand = `curl --location --request GET "https://livepeer.studio/api/task/${taskId}" --header "Authorization: Bearer ${process.env.LIVEPEER_API_KEY}"`;
+        const resp = childProcess.execSync(curlCommand).toString();
+        const { outputAssetId } = JSON.parse(resp);
+        console.log(outputAssetId);
+
+        let resultIPFSUrl;
+        let flag = true;
+        let i = 1;
+        while (flag) {
+          try {
+            const { nftMetadataUrl } = await nftAPI.exportToIPFS(outputAssetId);
+            resultIPFSUrl = nftMetadataUrl;
+            flag = false;
+          } catch (err) {
+            const { message } = err;
+            
+            if (message.includes('asset is not ready to be exported')) {
+              i = i + 1;
+              console.log(`asset is not ready at ${i} round`);
+              }
+            }
+        }
+        console.log('520 Server Error 2');
+        fs.unlinkSync(convertedFilePath);
+        return resultIPFSUrl;
+      }
+    }
+  }
+
+  async mintNFTLivePeer(nftMetadataUrl: string) {
+    console.log(`process mint: ${nftMetadataUrl}`);
+    // overwrite default videoNft mint function api
+    const videoNftAbi = [
+      'event safeMint(address indexed sender, address indexed owner, string tokenURI, uint256 tokenId)',
+      'function safeMint(address owner, string tokenURI) returns (uint256)',
+    ];
+    // TODO: get signer from FE
+    const provider = new ethers.providers.AlchemyProvider(
+      'goerli',
+      process.env.ALCHEMY_API_KEY,
+    );
+    const wallet = ethers.Wallet.fromMnemonic(process.env.MNEMONIC ?? '');
+    const signer = wallet.connect(provider);
+
+    // TODO: move contract address to a constant
+    const videoNft = new ethers.Contract(
+      '0xF03d562215fE57073378A8D3Eeb53307504A4857',
+      videoNftAbi,
+      signer,
+    );
+    await videoNft.safeMint(signer.address, nftMetadataUrl, {
+      gasLimit: 3000000,
+    });
   }
 }

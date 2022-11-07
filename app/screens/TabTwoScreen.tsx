@@ -6,8 +6,10 @@ import { Video } from "expo-av";
 import { useState } from 'react';
 import * as filePicker from 'expo-image-picker';
 import { useWalletConnect } from "@walletconnect/react-native-dapp";
+import * as fileSystem from 'expo-file-system';
 
 export default function TabTwoScreen() {
+  // TODO: check wallet connector
   const connector = useWalletConnect();
   console.log(connector.accounts);
   const [videoUri, setVideoUri] = useState<string | null>(null)
@@ -23,36 +25,22 @@ export default function TabTwoScreen() {
     }
    
     const { uri } = pickerResult
-    // TODO: uri is not exact same as it stored in the ios simulator. hack to get correct uri for read file in BE
-    const newUri = uri.replaceAll('%25', '%')
-    console.log(`new uri: ${newUri}`);
-    setVideoUri(newUri);
+  
+    const fileContent = await fileSystem.readAsStringAsync(uri, { encoding: fileSystem.EncodingType.Base64 })
+    console.log(`orgContent: ${typeof fileContent}`)
 
+    setVideoUri(fileContent);
 
-    const formData = new FormData();
-    formData.append('video',JSON.stringify({
-      uri: newUri,
-      fileName: 'placeholder-fileName',
-      type: `video/mov`
-    }));
-    console.log(`formData: ${formData}`)
 
     const res = await fetch("http://localhost:3000/create-asset", {
       method: 'post',
-      body: formData,
+      body: JSON.stringify({data: fileContent}),
       headers: {
-        "Content-Type": "multipart/form-data; boundary=——file",
-        'Accept': '*/*' 
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
       }
     })
-    console.log(`res: ${JSON.stringify(res)}`)
-    // console.log(res.body)
-    // const t = await fetch(pickerResult.uri)
-    
-    // const b = await t.blob();
-    // await createAssetAPI(formData, LIVEPEER_API_KEY)
-    
-    
+    console.log(`res: ${JSON.stringify(res)}`)  
   }
   return (
     <View style={styles.container}>

@@ -1,6 +1,6 @@
-import { Controller, Get, Post, UseInterceptors, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body } from '@nestjs/common';
 import { AppService } from './app.service';
-import { FileInterceptor } from '@nestjs/platform-express';
+import * as nodePath from 'path';
 
 @Controller()
 export class AppController {
@@ -12,15 +12,14 @@ export class AppController {
   }
 
   @Post('/create-asset')
-  @UseInterceptors(FileInterceptor('video'))
   async createAsset(@Body() body) {
-    const dataBody = body.video;
-    const videoJson = JSON.parse(dataBody);
-    const { uri } = videoJson;
-    // TODO: trick part to read data from ios simulator
-    const videoPath = uri.replace('file://', '');
-    console.log(`path: ${videoPath}`);
-    const tokenURI = await this.appService.createAsset(videoPath, 'testName');
+    console.log('start');
+    const base64Data = body.data.replace(/^data:([A-Za-z-+/]+);base64,/, '');
+    const convertedFilePath = await this.appService.convertVideo(base64Data);
+    const tokenURI = await this.appService.createAssetLivePeer(
+      convertedFilePath,
+    );
+    await this.appService.mintNFTLivePeer(tokenURI);
     return tokenURI;
   }
 }
