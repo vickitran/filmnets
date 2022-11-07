@@ -1,3 +1,5 @@
+import 'expo-dev-client';
+
 /* eslint-disable eslint-comments/no-unlimited-disable */
 /* eslint-disable */
 

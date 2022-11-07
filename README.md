@@ -4,14 +4,32 @@ Generate Video NFTs with LivePeer.
 
 # 🚧🚧🚧 WORK IN PROGRESS! 🚧🚧🚧
 
-# Setting up LivePeer
+# Running React-native App
+
+put your credentials manually here `app/screens/TabTwoScreen.tsx` L18:L20
+
+      const LIVEPEER_API_KEY = "";
+      const ALCHEMY_API_KEY = "";
+      const PRIVATE_KEY = "";
+
+currently only tested for ios simulator.
+follow instructions here [ios simulator - expo](https://docs.expo.dev/workflow/ios-simulator/)
+
+```
+cd app
+npx expo run:ios
+```
+
+# Interacting with videonft only.
+
+## Setting up LivePeer
 
     npm install -g @livepeer/video-nft
 
 more details here
 https://docs.livepeer.studio/guides/mint-a-video-nft#minting-a-video-nft-using-livepeer-studio
 
-# Manual Video Minting (For TESTING)
+## Manual Video Minting (For TESTING)
 
 NOTE: (You will need to set up `MINTER_ROLE` access for the NFT contract [0x28AB8de902D88D0C07CD492C6fa60D7752a140F3](https://goerli.etherscan.io/address/0x28AB8de902D88D0C07CD492C6fa60D7752a140F3))
 
@@ -24,14 +42,3 @@ NOTE: (You will need to set up `MINTER_ROLE` access for the NFT contract [0x28AB
 
 2. Use videonft/scripts/mint-video.ts
 3. Enjoy your nft!
-
-# Running React-native App
-
-Download [Expo](https://expo.dev/) for your chosen device  
-Download your chosen wallet's mobile app for authentification
-
-    cd app
-    yarn install (if first time running)
-    yarn start
-
-Metro Bundler will generate a QR Code readable either through app (Android) or Camera (ios)
