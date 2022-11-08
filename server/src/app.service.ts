@@ -32,9 +32,6 @@ const convertVideoStream = (video, outputPath) => {
 
 @Injectable()
 export class AppService {
-  getHello(): string {
-    return 'Hello World!';
-  }
   async createAsset(video64BasedContent: string): Promise<string> {
     console.log(`process mint`);
     // overwrite default videoNft mint function api
@@ -90,12 +87,12 @@ export class AppService {
     return nftMetadataUrl;
   }
 
-  async convertVideo(video64BasedContent: string): Promise<string> {
+  async convertVideo(video64BasedContent: string, videoType: string, videoName: string): Promise<string> {
     // get input file type
-    const orgFilePath = nodePath.resolve(__dirname, '../convertedTest.mov');
+    const orgFilePath = nodePath.resolve(__dirname, `../${videoName}.${videoType}`);
     const convertedFilePath = nodePath.resolve(
       __dirname,
-      '../convertedTest.mp4',
+      `../${videoName}.mp4`,
     );
 
     console.log(`start to convert video`);
@@ -105,7 +102,7 @@ export class AppService {
     return convertedFilePath;
   }
 
-  async createAssetLivePeer(convertedFilePath: string): Promise<string> { 
+  async createAssetLivePeer(convertedFilePath: string, videoName: string): Promise<string> { 
     const apiOpts = {
       auth: { apiKey: process.env.LIVEPEER_API_KEY },
       endpoint: videonft.api.prodApiEndpoint,
@@ -115,11 +112,9 @@ export class AppService {
     const fileContent = fs.createReadStream(convertedFilePath as string);
 
     console.log(`start to create asset`);
-
-    // TODO: get asset name from FE
     // TODO: 520 error of connection
     try {
-      const asset = await nftAPI.createAsset('new-test-2', fileContent);
+      const asset = await nftAPI.createAsset(videoName, fileContent);
       console.log(`export to IPFS`);
       const { nftMetadataUrl } = await nftAPI.exportToIPFS(asset?.id);
       console.log(`export video to ipfs: ${nftMetadataUrl}`);
@@ -161,7 +156,7 @@ export class AppService {
     }
   }
 
-  async mintNFTLivePeer(nftMetadataUrl: string) {
+  async mintNFTLivePeer(nftMetadataUrl: string, signerAddress: string ) {
     console.log(`process mint: ${nftMetadataUrl}`);
     // overwrite default videoNft mint function api
     const videoNftAbi = [
@@ -178,12 +173,16 @@ export class AppService {
 
     // TODO: move contract address to a constant
     const videoNft = new ethers.Contract(
-      '0xF03d562215fE57073378A8D3Eeb53307504A4857',
+      '0x28ab8de902d88d0c07cd492c6fa60d7752a140f3',
       videoNftAbi,
       signer,
     );
-    await videoNft.safeMint(signer.address, nftMetadataUrl, {
-      gasLimit: 3000000,
-    });
+    const tx = await videoNft.safeMint(
+      signerAddress !== 'placeholder' ? signerAddress : signer.address,
+      nftMetadataUrl,
+      { gasLimit: 3000000, }
+    );
+    const receipt = await tx.wait();
+    console.log(receipt);
   }
 }
