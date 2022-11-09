@@ -78,7 +78,7 @@ export class AppService {
 
     // TODO: move contract address to a constant
     const videoNft = new ethers.Contract(
-      '0xE710666F5C687e16CD8e71756C9E0833B05B1758',
+      '0x28AB8de902D88D0C07CD492C6fa60D7752a140F3',
       videoNftAbi,
       signer,
     );
