@@ -87,9 +87,16 @@ export class AppService {
     return nftMetadataUrl;
   }
 
-  async convertVideo(video64BasedContent: string, videoType: string, videoName: string): Promise<string> {
+  async convertVideo(
+    video64BasedContent: string,
+    videoType: string,
+    videoName: string,
+  ): Promise<string> {
     // get input file type
-    const orgFilePath = nodePath.resolve(__dirname, `../${videoName}.${videoType}`);
+    const orgFilePath = nodePath.resolve(
+      __dirname,
+      `../${videoName}.${videoType}`,
+    );
     const convertedFilePath = nodePath.resolve(
       __dirname,
       `../${videoName}.mp4`,
@@ -102,7 +109,10 @@ export class AppService {
     return convertedFilePath;
   }
 
-  async createAssetLivePeer(convertedFilePath: string, videoName: string): Promise<string> { 
+  async createAssetLivePeer(
+    convertedFilePath: string,
+    videoName: string,
+  ): Promise<string> {
     const apiOpts = {
       auth: { apiKey: process.env.LIVEPEER_API_KEY },
       endpoint: videonft.api.prodApiEndpoint,
@@ -142,12 +152,11 @@ export class AppService {
             flag = false;
           } catch (err) {
             const { message } = err;
-            
             if (message.includes('asset is not ready to be exported')) {
               i = i + 1;
               console.log(`asset is not ready at ${i} round`);
-              }
             }
+          }
         }
         console.log('520 Server Error 2');
         fs.unlinkSync(convertedFilePath);
@@ -156,7 +165,7 @@ export class AppService {
     }
   }
 
-  async mintNFTLivePeer(nftMetadataUrl: string, signerAddress: string ) {
+  async mintNFTLivePeer(nftMetadataUrl: string, signerAddress: string) {
     console.log(`process mint: ${nftMetadataUrl}`);
     // overwrite default videoNft mint function api
     const videoNftAbi = [
@@ -180,7 +189,7 @@ export class AppService {
     const tx = await videoNft.safeMint(
       signerAddress !== 'placeholder' ? signerAddress : signer.address,
       nftMetadataUrl,
-      { gasLimit: 3000000, }
+      { gasLimit: 3000000 },
     );
     const receipt = await tx.wait();
     console.log(receipt);
